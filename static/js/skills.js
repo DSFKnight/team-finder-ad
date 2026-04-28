@@ -4,7 +4,7 @@
     const container = document.getElementById("skills-container");
     if (!container) return;
 
-    const projectId = container.dataset.projectId;
+    const userId = container.dataset.userId;
     const addBtn = document.getElementById("add-skill-btn");
     const inputWrapper = document.getElementById("skill-input-wrapper");
     const input = document.getElementById("skill-input");
@@ -31,7 +31,7 @@
         return;
       }
       t = setTimeout(async () => {
-        const res = await fetch(`/projects/skills/?q=${encodeURIComponent(q)}`);
+        const res = await fetch(`/users/skills/?q=${encodeURIComponent(q)}`);
         if (!res.ok) return;
         const data = await res.json();
 
@@ -100,7 +100,7 @@
       if (e.target.classList.contains("remove-skill-btn")) {
         const chip = e.target.closest(".skill-chip");
         const skillId = chip.dataset.id;
-        const res = await fetch(`/projects/${projectId}/skills/${skillId}/remove/`, {
+        const res = await fetch(`/users/${userId}/skills/${skillId}/remove/`, {
           method: "POST",
           headers: { "X-CSRFToken": getCookie("csrftoken") }
         });
@@ -111,7 +111,7 @@
     });
 
     async function addSkillById(skillId) {
-      const res = await fetch(`/projects/${projectId}/skills/add/`, {
+      const res = await fetch(`/users/${userId}/skills/add/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -120,13 +120,13 @@
         body: JSON.stringify({ skill_id: skillId }),
       });
       if (res.ok) {
-        const skill = await res.json();
-        appendChip(skill.id, skill.name);
+        appendChip(skillId, document.querySelector(`[data-id="${skillId}"]`)?.textContent || "Навык");
+        window.location.reload(); 
       }
     }
 
     async function addSkillByName(name) {
-      const res = await fetch(`/projects/${projectId}/skills/add/`, {
+      const res = await fetch(`/users/${userId}/skills/add/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -135,21 +135,17 @@
         body: JSON.stringify({ name }),
       });
       if (res.ok) {
-        const skill = await res.json();
-        appendChip(skill.id, skill.name);
+        window.location.reload(); 
       }
     }
 
     function appendChip(id, name) {
       if (container.querySelector(`.skill-chip[data-id="${id}"]`)) return;
-
       const chip = document.createElement("span");
       chip.className = "skill-chip";
       chip.dataset.id = id;
       chip.innerHTML = `${name} <button type="button" class="remove-skill-btn" aria-label="Удалить" title="Удалить">×</button>`;
-
       container.insertBefore(chip, addBtn);
-
       const empty = container.querySelector(".skill-empty");
       if (empty) empty.remove();
     }
