@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from .constants import PROJECT_NAME_MAX_LENGTH, PROJECT_STATUS_MAX_LENGTH
 
 class Project(models.Model):
     STATUS_OPEN = "open"
@@ -12,7 +13,7 @@ class Project(models.Model):
     ]
 
     name = models.CharField(
-        max_length=200,
+        max_length=PROJECT_NAME_MAX_LENGTH,
         verbose_name="Название проекта",
     )
     description = models.TextField(
@@ -35,7 +36,7 @@ class Project(models.Model):
         verbose_name="Ссылка на Github",
     )
     status = models.CharField(
-        max_length=max(len(key) for key, _ in STATUS_CHOICES),
+        max_length=PROJECT_STATUS_MAX_LENGTH,
         choices=STATUS_CHOICES,
         default=STATUS_OPEN,
         verbose_name="Статус",
