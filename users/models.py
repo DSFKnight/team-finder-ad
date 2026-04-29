@@ -6,13 +6,17 @@ from django.core.files.base import ContentFile
 from django.db import models
 from PIL import Image, ImageDraw, ImageFont
 
-from .constants import AVATAR_SIZE, AVATAR_TEXT_POSITION, AvatarColor
+from .constants import (
+    AVATAR_SIZE, AVATAR_TEXT_POSITION, SKILL_NAME_MAX_LENGTH,
+    USER_ABOUT_MAX_LENGTH, USER_NAME_MAX_LENGTH, USER_PHONE_MAX_LENGTH,
+    USER_SURNAME_MAX_LENGTH, AvatarColor
+)
 from .managers import UserManager
 
 
 class Skill(models.Model):
     name = models.CharField(
-        max_length=124, 
+        max_length=SKILL_NAME_MAX_LENGTH, 
         unique=True, 
         verbose_name="Название навыка"
     )
@@ -28,12 +32,25 @@ class Skill(models.Model):
 class User(AbstractBaseUser, PermissionsMixin):
     # 1. Поля базы данных
     email = models.EmailField(unique=True, verbose_name="Email")
-    name = models.CharField(max_length=124, verbose_name="Имя")
-    surname = models.CharField(max_length=124, verbose_name="Фамилия")
+    name = models.CharField(
+        max_length=USER_NAME_MAX_LENGTH, # Использована константа
+        verbose_name="Имя"
+    )
+    surname = models.CharField(
+        max_length=USER_SURNAME_MAX_LENGTH, # Использована константа
+        verbose_name="Фамилия"
+    )
     avatar = models.ImageField(upload_to="avatars/", verbose_name="Аватар")
-    phone = models.CharField(max_length=12, verbose_name="Телефон")
+    phone = models.CharField(
+        max_length=USER_PHONE_MAX_LENGTH, # Использована константа
+        verbose_name="Телефон"
+    )
     github_url = models.URLField(blank=True, null=True, verbose_name="Ссылка на Github")
-    about = models.TextField(max_length=256, blank=True, verbose_name="О себе")
+    about = models.TextField(
+        max_length=USER_ABOUT_MAX_LENGTH, # Использована константа
+        blank=True, 
+        verbose_name="О себе"
+    )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     

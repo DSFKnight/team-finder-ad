@@ -4,7 +4,6 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .constants import PROJECTS_PER_PAGE
 from .forms import ProjectForm
 from .models import Project
 from .services import get_paginated_page
@@ -15,7 +14,7 @@ def project_list_view(request):
         'participants'
     ).order_by('-created_at')
     
-    page_obj = get_paginated_page(request, projects_qs, PROJECTS_PER_PAGE)
+    page_obj = get_paginated_page(request, projects_qs)
     
     context = {"projects": page_obj}
     return render(request, 'projects/project_list.html', context)

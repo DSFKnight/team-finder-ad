@@ -41,7 +41,6 @@ pip install -r requirements.txt
 
 ### 2. Настройка проекта
 Создайте файл .env на основе примера .env_example.
-Установите параметр TASK_VERSION=2.
 Запустите базу данных через Docker:
 ```bash
 docker compose up -d
@@ -57,5 +56,6 @@ python manage.py runserver
 ## Автор
 * Громов Алексей
 * Группа 3822Б1ПР3
+* GitHub: [DSFKnight](https://github.com/DSFKnight)
 
 Проект выполнен в рамках работы курса Бэкенд-разработки.
