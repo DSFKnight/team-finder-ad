@@ -1,89 +1,87 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.core.paginator import Paginator
+from http import HTTPStatus
+
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from .models import Project
+from django.shortcuts import get_object_or_404, redirect, render
+
+from .constants import PROJECTS_PER_PAGE
 from .forms import ProjectForm
+from .models import Project
+from .services import get_paginated_page
+
 
 def project_list_view(request):
-    projects_qs = Project.objects.all().order_by('-created_at')
-    paginator = Paginator(projects_qs, 12)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    projects_qs = Project.objects.select_related('owner').prefetch_related(
+        'participants'
+    ).order_by('-created_at')
+    
+    page_obj = get_paginated_page(request, projects_qs, PROJECTS_PER_PAGE)
     
     context = {"projects": page_obj}
     return render(request, 'projects/project_list.html', context)
 
+
 def project_detail_view(request, pk):
-    # Получаем проект или отдаем 404 ошибку
     project = get_object_or_404(Project, pk=pk)
     return render(request, 'projects/project-details.html', {"project": project})
 
-@login_required(login_url='/users/login/')
+
+@login_required
 def project_create_view(request):
-    if request.method == "POST":
-        form = ProjectForm(request.POST)
-        if form.is_valid():
-            # Сохраняем
-            project = form.save(commit=False)
-            project.owner = request.user # Автором становится текущий пользователь
-            project.save()
-            # Добавляем автора в список участников
-            project.participants.add(request.user)
-            return redirect('projects:detail', pk=project.pk)
-    else:
-        form = ProjectForm()
+    form = ProjectForm(request.POST or None)
+    
+    if form.is_valid():
+        project = form.save(commit=False)
+        project.owner = request.user
+        project.save()
+        project.participants.add(request.user)
+        return redirect('projects:detail', pk=project.pk)
         
     return render(request, 'projects/create-project.html', {"form": form, "is_edit": False})
 
-@login_required(login_url='/users/login/')
+
+@login_required
 def project_edit_view(request, pk):
     project = get_object_or_404(Project, pk=pk)
     
-    # Проверяем, что редактирует именно автор
     if request.user != project.owner:
         return redirect('projects:detail', pk=pk)
         
-    if request.method == "POST":
-        form = ProjectForm(request.POST, instance=project)
-        if form.is_valid():
-            form.save()
-            return redirect('projects:detail', pk=project.pk)
-    else:
-        form = ProjectForm(instance=project)
+    form = ProjectForm(request.POST or None, instance=project)
+    
+    if form.is_valid():
+        form.save()
+        return redirect('projects:detail', pk=project.pk)
         
     return render(request, 'projects/create-project.html', {"form": form, "is_edit": True})
 
-@login_required(login_url='/users/login/')
+
+@login_required
 def project_complete_view(request, pk):
     if request.method == "POST":
         project = get_object_or_404(Project, pk=pk)
-        # Проверяем права и текущий статус
-        if request.user == project.owner and project.status == 'open':
-            project.status = 'closed'
+        
+        if request.user == project.owner and project.status == Project.STATUS_OPEN:
+            project.status = Project.STATUS_CLOSED
             project.save()
-            return JsonResponse({"status": "ok", "project_status": "closed"})
-    return JsonResponse({"status": "error"}, status=400)
+            return JsonResponse({"status": "ok", "project_status": Project.STATUS_CLOSED})
+            
+    return JsonResponse({"status": "error"}, status=HTTPStatus.BAD_REQUEST)
 
-@login_required(login_url='/users/login/')
+
+@login_required
 def project_participate_view(request, pk):
     if request.method == "POST":
         project = get_object_or_404(Project, pk=pk)
         
-        # Проверяем и меняем статус
-        if request.user in project.participants.all():
+        if is_participating := project.participants.filter(pk=request.user.pk).exists():
             project.participants.remove(request.user)
-            # Флаг для JS: пользователь НЕ участник
-            is_participating = False
         else:
             project.participants.add(request.user)
-            # Флаг для JS: пользователь участник
-            is_participating = True
             
-        # Возвращаем JSON с флагом
         return JsonResponse({
             "status": "ok", 
-            "participant": is_participating
+            "participant": not is_participating
         })
         
-    return JsonResponse({"error": "Bad request"}, status=400)
+    return JsonResponse({"error": "Bad request"}, status=HTTPStatus.BAD_REQUEST)

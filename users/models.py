@@ -1,32 +1,32 @@
-from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
-from django.core.files.base import ContentFile
-from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
 import random
+from io import BytesIO
+
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.files.base import ContentFile
+from django.db import models
+from PIL import Image, ImageDraw, ImageFont
+
+from .constants import AVATAR_SIZE, AVATAR_TEXT_POSITION, AvatarColor
+from .managers import UserManager
+
 
 class Skill(models.Model):
-    name = models.CharField(max_length=124, unique=True, verbose_name="Название навыка")
+    name = models.CharField(
+        max_length=124, 
+        unique=True, 
+        verbose_name="Название навыка"
+    )
+
+    class Meta:
+        verbose_name = "Навык"
+        verbose_name_plural = "Навыки"
 
     def __str__(self):
         return self.name
 
-class UserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError("Email обязателен")
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_superuser", True)
-        return self.create_user(email, password, **extra_fields)
 
 class User(AbstractBaseUser, PermissionsMixin):
+    # 1. Поля базы данных
     email = models.EmailField(unique=True, verbose_name="Email")
     name = models.CharField(max_length=124, verbose_name="Имя")
     surname = models.CharField(max_length=124, verbose_name="Фамилия")
@@ -37,35 +37,46 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     
-    # M2M связь для навыков
-    skills = models.ManyToManyField(Skill, related_name="users", blank=True, verbose_name="Навыки")
+    skills = models.ManyToManyField(
+        Skill, 
+        related_name="users", 
+        blank=True, 
+        verbose_name="Навыки",
+    )
 
+    # 2. Менеджеры и константы класса
     objects = UserManager()
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name", "surname", "phone"]
 
+    # 3. Мета-класс
+    class Meta:
+        verbose_name = "Пользователь"
+        verbose_name_plural = "Пользователи"
+
+    # 4. Магические методы
+    def __str__(self):
+        return f"{self.name} {self.surname}"
+
+    # 5. Переопределенные методы Django
     def save(self, *args, **kwargs):
         if not self.avatar:
             self.generate_avatar()
         super().save(*args, **kwargs)
 
+    # 6. Кастомные методы
     def generate_avatar(self):
-        # Генерация аватарки с первой буквой имени
-        size = 200
-        bg_color = random.choice(['#E57373', '#81C784', '#64B5F6', '#FFD54F', '#BA68C8'])
-        img = Image.new('RGB', (size, size), color=bg_color)
+        # Используем константы и Enum
+        bg_color = random.choice(list(AvatarColor))
+        img = Image.new('RGB', (AVATAR_SIZE, AVATAR_SIZE), color=bg_color)
         draw = ImageDraw.Draw(img)
         
         letter = self.name[0].upper() if self.name else "U"
-        
         font = ImageFont.load_default()
         
-        draw.text((85, 85), letter, fill="white", font=font, align="center")
+        draw.text(AVATAR_TEXT_POSITION, letter, fill="white", font=font, align="center")
         
         buffer = BytesIO()
         img.save(buffer, format='PNG')
         self.avatar.save(f'{self.email}_avatar.png', ContentFile(buffer.getvalue()), save=False)
-
-    def __str__(self):
-        return f"{self.name} {self.surname}"
